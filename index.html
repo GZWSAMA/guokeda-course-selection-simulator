@@ -366,6 +366,7 @@ var PROFILE_DEFAULTS = {
   otherProfessional:{total:24, degree:12, publicCredits:2, professionalElective:0}
 };
 var profile = {type:'academicMaster', major:'', total:30, degree:12, publicCredits:2, professionalElective:0};
+// AI 学院须知中的精确专业映射；页面还会从真实课表动态补全全校专业
 var MAJORS = [
   ['081101','控制理论与控制工程'],['081102','检测技术与自动化装置'],['081103','系统工程'],
   ['081104','模式识别与智能系统'],['081105','导航、制导与控制'],['0811J2','社会计算（控制科学与工程）'],
@@ -659,7 +660,7 @@ function renderAfterCatalogChange(){
   COURSES=courseCatalogs[currentTerm];
   updateCatalogMaxWeeks();
   currentWeek=termWeeks[currentTerm];
-  refreshCatalogFilters();updateTermUI();doSearch();renderSelected();renderAlternates();renderSchedule();renderProgress();saveState();
+  refreshMajorOptions();refreshCatalogFilters();updateTermUI();doSearch();renderSelected();renderAlternates();renderSchedule();renderProgress();saveState();
 }
 
 async function importXlsxFile(file){
@@ -693,9 +694,7 @@ async function init(){
   loadState();
   COURSES = courseCatalogs[currentTerm];
 
-  var majorHtml = '';
-  MAJORS.forEach(function(m){ majorHtml += '<option value="'+m[0]+' '+esc(m[1])+'"></option>'; });
-  document.getElementById('majorOptions').innerHTML = majorHtml;
+  refreshMajorOptions();
   syncProfileInputs();
   updateTermUI();
 
@@ -742,6 +741,23 @@ function refreshCatalogFilters(){
     while(sel.options.length>1) sel.remove(1);
     fillSelect(item[0],Object.keys(item[1]).sort());
   });
+}
+
+function refreshMajorOptions(){
+  var pairs={};
+  MAJORS.forEach(function(m){pairs[m[0]+'|'+m[1]]=[m[0],m[1]];});
+  Object.keys(TERM_NAMES).forEach(function(term){
+    (courseCatalogs[term]||[]).forEach(function(c){
+      var code=subjectCode(c),name=String(c.subject||'').trim();
+      if(code&&name)pairs[code+'|'+name]=[code,name];
+    });
+  });
+  MAJORS=Object.keys(pairs).map(function(k){return pairs[k];}).sort(function(a,b){
+    return a[0]===b[0]?a[1].localeCompare(b[1],'zh-CN'):a[0].localeCompare(b[0]);
+  });
+  var html='';
+  MAJORS.forEach(function(m){html+='<option value="'+esc(m[0]+' '+m[1])+'"></option>';});
+  document.getElementById('majorOptions').innerHTML=html;
 }
 
 function syncPeriodFilters(changed){
